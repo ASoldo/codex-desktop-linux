@@ -1,0 +1,13 @@
+[Unit]
+Description=Codex Desktop update tray
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/codex-desktop-tray
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

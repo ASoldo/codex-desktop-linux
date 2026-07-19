@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+TASK_CACHE_ROOT="${XDG_CACHE_HOME:-${HOME}/.cache}/rust-browser-control"
+BINARY="${TASK_CACHE_ROOT}/target/release/rust-browser-control-mcp"
+
+if [[ ! -x "${BINARY}" || "${PLUGIN_ROOT}/Cargo.toml" -nt "${BINARY}" || "${PLUGIN_ROOT}/src/main.rs" -nt "${BINARY}" || "${PLUGIN_ROOT}/src/browser.rs" -nt "${BINARY}" ]]; then
+  mkdir -p "${TASK_CACHE_ROOT}"
+  CARGO_TARGET_DIR="${TASK_CACHE_ROOT}/target" cargo build --quiet --release --locked --manifest-path "${PLUGIN_ROOT}/Cargo.toml"
+fi
+
+exec "${BINARY}"

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+TASK_CACHE_ROOT="${XDG_CACHE_HOME:-${HOME}/.cache}/rust-browser-control"
+mkdir -p "${TASK_CACHE_ROOT}"
+CARGO_TARGET_DIR="${TASK_CACHE_ROOT}/target" cargo build --release --locked --manifest-path "${PLUGIN_ROOT}/Cargo.toml"
+echo "${TASK_CACHE_ROOT}/target/release/rust-browser-control-mcp"

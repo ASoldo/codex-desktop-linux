@@ -1,0 +1,224 @@
+# Maintainer: Parsiad Azimzadeh <parsiad.azimzadeh at gmail dot com>
+# Maintainer: mothran
+# Releases: https://persistent.oaistatic.com/codex-app-prod/appcast.xml
+
+pkgname=openai-codex-desktop
+pkgver=26.715.31925
+pkgrel=3
+pkgdesc="OpenAI Codex desktop app"
+arch=('aarch64')
+url="https://developers.openai.com/codex/app/"
+license=('custom')
+
+depends=(
+  'electron42'
+  'openai-codex'
+  'python'
+  'hicolor-icon-theme'
+  'xdotool'
+  'xorg-xinput'
+  'xdg-utils'
+)
+
+makedepends=(
+  'libarchive'
+  'nodejs'
+  'npm'
+)
+
+_electron_major=42
+_better_sqlite3_ver=12.9.0
+_node_pty_ver=1.1.0
+_upstream_app=ChatGPT
+
+source=(
+  "${_upstream_app}-${pkgver}.zip::https://persistent.oaistatic.com/codex-app-prod/${_upstream_app}-darwin-arm64-${pkgver}.zip"
+  "better-sqlite3.tgz::https://registry.npmjs.org/better-sqlite3/-/better-sqlite3-${_better_sqlite3_ver}.tgz"
+  "node-pty.tgz::https://registry.npmjs.org/node-pty/-/node-pty-${_node_pty_ver}.tgz"
+  "codex-desktop.sh"
+  "Codex.desktop"
+  "patch-linux-open-targets.mjs"
+  "patch-linux-opaque-bg.mjs"
+  "patch-linux-browser-persistence.mjs"
+  "patch-linux-terminal-font.mjs"
+  "patch-linux-dictation.mjs"
+  "openai-codex-desktop.png"
+)
+
+noextract=(
+  "${_upstream_app}-${pkgver}.zip"
+  'better-sqlite3.tgz'
+  'node-pty.tgz'
+)
+
+sha256sums=('a0cded116975c71c723dc8601c07402533b5ff23881d15e52cfb6dc71413e45b'
+            'ad0e29650140c49d0335b1d356596aa8166f12b758f418a98446130e3278f250'
+            'c7517f19083ddcb05f276904680eb2b11a6b5ecab778b8e4e5685a6d645b3f60'
+            '9764dd9424e362048ae393ff62617a6102fc604ff37a0ac675e27fcee7cf3fae'
+            '568228ade14afa0afd43eea6887547b7541e45e8438042367f628c5dae3aa810'
+            'a5d182edfcaa203d6ed0d65d55baf536b3215d4e46d4d9204d330fedc55ba115'
+            '5dc3dba338cddf485949b97d99e6bcd9eea83589507c016c8534291ade50c843'
+            '0e265ef64752de23682022080cad376bdb59ee05385bc971f1f464c21db05407'
+            'f4adb39192f1b33cb4a46e9b7a53d61b14d0fd9d2b0549c747117a4f657054d4'
+            'cf5c1a769dbdf366fa3c73d81f9f8239d90da4e5f226abae0f8064b923514d0a'
+            '0ee3717d218f38d1e8ff2051125b80b745e8d9c20218dc52f984c440b41b740d')
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf dmg app-extracted app.asar app.asar.unpacked bundled-resources native-build
+  mkdir dmg
+
+  bsdtar -xf "${_upstream_app}-${pkgver}.zip" -C "${srcdir}/dmg"
+
+  local appdir
+  appdir="$(find dmg -maxdepth 4 -type d -name '*.app' ! -path '*/__MACOSX/*' | head -n1)"
+  [[ -n "${appdir}" ]] || {
+    echo "Could not find .app bundle in ${_upstream_app} archive"
+    return 1
+  }
+
+  mkdir -p bundled-resources
+  local portable_resource
+  for portable_resource in plugins skills; do
+    [[ -d "${appdir}/Contents/Resources/${portable_resource}" ]] || {
+      echo "Could not find bundled ${portable_resource} resources"
+      return 1
+    }
+    cp -a "${appdir}/Contents/Resources/${portable_resource}" bundled-resources/
+  done
+
+  mkdir -p icon
+  cp "${srcdir}/openai-codex-desktop.png" icon/openai-codex-desktop-512x512.png
+
+  npx --yes asar extract \
+    "${appdir}/Contents/Resources/app.asar" \
+    app-extracted
+
+  [[ -d "${appdir}/Contents/Resources/app.asar.unpacked" ]] &&
+    cp -a "${appdir}/Contents/Resources/app.asar.unpacked" .
+
+  rm -rf app-extracted/node_modules/sparkle-darwin
+  find app-extracted -type f \( -name '*.dylib' -o -name 'sparkle.node' \) -delete
+
+  node "${srcdir}/patch-linux-open-targets.mjs" app-extracted
+  node "${srcdir}/patch-linux-opaque-bg.mjs" app-extracted
+  node "${srcdir}/patch-linux-browser-persistence.mjs" app-extracted
+  node "${srcdir}/patch-linux-terminal-font.mjs" app-extracted
+  node "${srcdir}/patch-linux-dictation.mjs" app-extracted
+
+  local bs3_ver npty_ver
+  bs3_ver="$(node -p "require('${srcdir}/app-extracted/node_modules/better-sqlite3/package.json').version")"
+  npty_ver="$(node -p "require('${srcdir}/app-extracted/node_modules/node-pty/package.json').version")"
+
+  [[ "${bs3_ver}" == "${_better_sqlite3_ver}" ]] || {
+    echo "better-sqlite3 version mismatch: app=${bs3_ver}, pkgbuild=${_better_sqlite3_ver}"
+    return 1
+  }
+
+  [[ "${npty_ver}" == "${_node_pty_ver}" ]] || {
+    echo "node-pty version mismatch: app=${npty_ver}, pkgbuild=${_node_pty_ver}"
+    return 1
+  }
+
+  mkdir native-build
+  cd native-build
+
+  cat >package.json <<'EOF'
+{
+  "name": "codex-desktop-native-rebuild",
+  "private": true,
+  "license": "UNLICENSED"
+}
+EOF
+
+  npm install \
+    --ignore-scripts \
+    --no-audit \
+    --no-fund \
+    "${srcdir}/better-sqlite3.tgz" \
+    "${srcdir}/node-pty.tgz"
+
+  local bs3_src=node_modules/better-sqlite3/src
+  sed -i \
+    's/v8::External::New(isolate, addon)/v8::External::New(isolate, addon, v8::kExternalPointerTypeTagDefault)/' \
+    "${bs3_src}/better_sqlite3.cpp"
+  sed -i \
+    's/v8::External>()->Value()/v8::External>()->Value(v8::kExternalPointerTypeTagDefault)/' \
+    "${bs3_src}/util/macros.cpp"
+  sed -i \
+    '/SetNativeDataProperty/,/);/{s/\t\t0,/\t\tnullptr,/}' \
+    "${bs3_src}/util/helpers.cpp"
+
+  export npm_config_runtime=electron
+  export npm_config_target="${_electron_major}.0.0"
+  export npm_config_disturl="https://electronjs.org/headers"
+  export npm_config_build_from_source=true
+
+  npx --yes @electron/rebuild -v "${_electron_major}.0.0" --force
+
+  rm -rf "${srcdir}/app-extracted/node_modules/better-sqlite3"
+  rm -rf "${srcdir}/app-extracted/node_modules/node-pty"
+  cp -a node_modules/better-sqlite3 "${srcdir}/app-extracted/node_modules/"
+  cp -a node_modules/node-pty "${srcdir}/app-extracted/node_modules/"
+
+  cd "${srcdir}"
+  find app-extracted/node_modules/better-sqlite3 app-extracted/node_modules/node-pty \
+    -type f \( -name Makefile -o -name '*.mk' -o -name config.gypi \) -delete
+  find app-extracted/node_modules/better-sqlite3 app-extracted/node_modules/node-pty \
+    -type d -name .deps -prune -exec rm -rf '{}' +
+
+  local prebuild_root
+  for prebuild_root in app-extracted app.asar.unpacked; do
+    [[ -d "${prebuild_root}" ]] || continue
+    find "${prebuild_root}" -path '*/prebuilds/*' -type f -name '*.node' \
+      ! \( -path '*/linux-arm64/*' -o -path '*/HID-linux-arm64/*' -o -path '*/HID_hidraw-linux-arm64/*' \) \
+      -delete
+    find "${prebuild_root}" -path '*/prebuilds/*' -type f -name '*musl*.node' -delete
+  done
+
+  npx --yes asar pack app-extracted app.asar --unpack "{*.node,*.so}"
+}
+
+package() {
+  cd "${srcdir}"
+
+  install -Dm644 app.asar \
+    "${pkgdir}/usr/lib/${pkgname}/resources/app.asar"
+
+  if [[ -d app.asar.unpacked ]]; then
+    cp -a app.asar.unpacked \
+      "${pkgdir}/usr/lib/${pkgname}/resources/"
+  fi
+
+  if [[ -d bundled-resources ]]; then
+    cp -a bundled-resources/. \
+      "${pkgdir}/usr/lib/${pkgname}/resources/"
+  fi
+
+  if [[ -d app-extracted/webview ]]; then
+    mkdir -p "${pkgdir}/usr/lib/${pkgname}/content"
+    cp -a app-extracted/webview \
+      "${pkgdir}/usr/lib/${pkgname}/content/"
+  fi
+
+  ln -s "/usr/lib/electron${_electron_major}/electron" \
+    "${pkgdir}/usr/lib/${pkgname}/codex"
+
+  install -Dm755 codex-desktop.sh \
+    "${pkgdir}/usr/bin/codex-desktop"
+
+  local icon_png
+  icon_png="$(find icon -maxdepth 1 -type f -name '*512x512*.png' -print -quit)"
+  [[ -n "${icon_png}" ]] ||
+    icon_png="$(find icon -maxdepth 1 -type f -name '*.png' -print | sort -V | tail -n1)"
+  [[ -n "${icon_png}" ]] || {
+    echo "Could not find an application icon to package"
+    return 1
+  }
+
+  install -Dm644 "${icon_png}" \
+    "${pkgdir}/usr/share/icons/hicolor/512x512/apps/openai-codex-desktop.png"
+
+  install -Dm644 Codex.desktop \
+    "${pkgdir}/usr/share/applications/Codex.desktop"
+}

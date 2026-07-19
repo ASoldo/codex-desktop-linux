@@ -1,0 +1,23 @@
+[package]
+name = "rust-browser-control-mcp"
+version = "0.1.0"
+edition = "2024"
+description = "A local MCP server for controlling the visible Codex in-app browser"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+base64 = "0.22"
+rmcp = { version = "1.8", features = ["transport-io"] }
+schemars = "1.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.49", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+url = "2.5"
+
+[dev-dependencies]
+tempfile = "3.24"
+
+[profile.release]
+strip = true
+lto = "thin"

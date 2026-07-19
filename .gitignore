@@ -1,0 +1,8 @@
+desktop/archlinux-arm64/ChatGPT-*.zip
+desktop/archlinux-arm64/*.tgz
+desktop/archlinux-arm64/*.pkg.tar.*
+desktop/archlinux-arm64/pkg/
+desktop/archlinux-arm64/src/
+plugins/rust-browser-control/target/
+__pycache__/
+*.pyc

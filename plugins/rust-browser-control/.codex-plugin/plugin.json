@@ -1,0 +1,35 @@
+{
+  "name": "rust-browser-control",
+  "version": "0.2.0",
+  "description": "Control the visible Codex in-app browser on Linux through a local Rust MCP server.",
+  "author": {
+    "name": "ASoldo",
+    "url": "https://github.com/ASoldo"
+  },
+  "homepage": "https://github.com/ASoldo/codex-desktop-linux",
+  "repository": "https://github.com/ASoldo/codex-desktop-linux",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "linux",
+    "browser",
+    "rust",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Rust Browser Control",
+    "shortDescription": "Share the visible Codex browser and cursor on Linux.",
+    "longDescription": "Control the current task's visible in-app browser through Codex's browser-use socket. Supports shared cursor movement, clicks, scrolling, navigation, compact DOM snapshots, typing, screenshots, and verified downloads without launching a separate browser profile.",
+    "developerName": "ASoldo",
+    "category": "Productivity",
+    "capabilities": [
+      "Codex side-pane browser",
+      "Visible cursor control",
+      "Shared login state",
+      "Verified downloads"
+    ],
+    "defaultPrompt": "Use Rust Browser Control to operate this task's visible side-pane browser safely."
+  }
+}
