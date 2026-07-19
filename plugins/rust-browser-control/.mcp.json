@@ -12,7 +12,8 @@
         "RUST_BROWSER_SOCKET_DIR",
         "RUST_BROWSER_SESSIONS_ROOT",
         "RUST_BROWSER_DOWNLOAD_DIR",
-        "RUST_BROWSER_ALLOWED_HOSTS"
+        "RUST_BROWSER_ALLOWED_HOSTS",
+        "RUST_BROWSER_ENABLE_RAW_CDP"
       ],
       "tool_timeout_sec": 120
     }

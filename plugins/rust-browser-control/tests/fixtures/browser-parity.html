@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Rust Browser Control parity smoke</title>
+    <style>
+      body { font: 16px system-ui; margin: 2rem; min-height: 1400px; }
+      label { display: block; margin: 0.75rem 0; }
+      #drag-source, #drop-target { border: 2px solid #555; display: inline-grid; height: 80px; margin-right: 1rem; place-items: center; width: 140px; }
+      #drop-target.dropped { background: #b8f5c0; }
+    </style>
+  </head>
+  <body>
+    <h1>Browser parity smoke</h1>
+    <label>Name <input id="name" placeholder="Type here"></label>
+    <label>Mode
+      <select id="mode"><option value="one">One</option><option value="two">Two</option></select>
+    </label>
+    <label><input id="enabled" type="checkbox"> Enabled</label>
+    <button id="log" type="button">Write console log</button>
+    <button id="dialog" type="button">Open prompt</button>
+    <button id="double" type="button">Double-click target</button>
+    <label>Upload <input id="upload" type="file"></label>
+    <a id="download" href="upload.txt" download>Download fixture</a>
+    <img src="parity.svg" alt="external asset" width="40" height="40">
+    <p>
+      <span id="drag-source" draggable="true">Drag source</span>
+      <span id="drop-target">Drop target</span>
+    </p>
+    <svg aria-label="inline asset" width="40" height="40"><circle cx="20" cy="20" r="18" fill="seagreen"></circle></svg>
+    <script>
+      document.querySelector('#log').addEventListener('click', () => console.warn('rust-browser-parity-log'));
+      document.querySelector('#dialog').addEventListener('click', () => { document.body.dataset.prompt = prompt('Parity prompt', '') || ''; });
+      document.querySelector('#double').addEventListener('dblclick', event => { event.currentTarget.dataset.doubleClicked = 'true'; });
+      document.querySelector('#drag-source').addEventListener('dragstart', event => event.dataTransfer.setData('text/plain', 'parity'));
+      document.querySelector('#drop-target').addEventListener('dragover', event => event.preventDefault());
+      document.querySelector('#drop-target').addEventListener('drop', event => { event.preventDefault(); event.currentTarget.classList.add('dropped'); });
+    </script>
+  </body>
+</html>

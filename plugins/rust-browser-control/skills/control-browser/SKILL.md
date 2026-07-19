@@ -12,11 +12,13 @@ Use the `rust-browser-control` MCP tools only for operations the user requested.
 1. Call `browser_status`. If there is no matching in-app browser socket, ask the user to open the Browser side pane for this Codex task, then retry.
 2. Call `launch_browser` to claim or create a side-pane tab. Pass an initial URL only when the user requested navigation.
 3. Call `list_tabs` when more than one side-pane tab may be open.
-4. Call `snapshot` before interactions. Prefer its CSS selectors and coordinates over broad text matches.
-5. Use `move_cursor`, `click`, `scroll`, `type_text`, `select_option`, and `set_checked` for observable interaction. These tools route pointer movement through the app so the user sees the Codex cursor. Use `selector_index` when a page repeats the same selector for several select fields.
-6. For an inner scroll area, pass its selector to `scroll`, or pass a point inside it. Positive `scroll_y` scrolls down.
-7. Use `click_and_wait_for_download` for downloads so completion is verified on disk.
-8. Use `screenshot` when visual inspection is needed.
+4. Call `snapshot` before interactions. Prefer its CSS selectors and coordinates over broad text matches. Use `element_info` for bounded locator counts, attributes, state, or geometry, and `evaluate_readonly` only for a focused page read that those tools cannot answer.
+5. Use `move_cursor`, `click`, `double_click`, `drag`, `scroll`, `type_text`, `keypress`, `select_option`, and `set_checked` for observable interaction. Pointer tools route movement through the app so the user sees the Codex cursor. Use `selector_index` when a page repeats the same selector for several select fields.
+6. For an inner scroll area, pass its selector to `scroll`, or pass a point inside it. Positive `scroll_y` scrolls down. Use `wait_for` or `wait_for_page` for a concrete post-action state rather than a fixed delay.
+7. Use `upload_files` only for absolute paths the user authorized. Use `click_and_wait_for_download` for downloads so completion is verified on disk.
+8. Use `screenshot` for viewport, full-page, or element captures. Use `export_page` for HTML/text/Markdown/PDF and `page_assets` for rendered asset inventory or bundles.
+9. Use `console_logs` with `start` before reproducing a page error. For JavaScript dialogs, call `handle_dialog` with the trigger selector/text so the visible click and dialog response remain on one socket connection. Use `browser_viewport` only for requested responsive testing and reset temporary overrides afterward.
+10. Use `cdp_command` or `cdp_events` only for a developer task that requires them. They are unavailable unless Codex Desktop was explicitly launched with `RUST_BROWSER_ENABLE_RAW_CDP=1`.
 
 ## Safety
 
@@ -26,6 +28,7 @@ Use the `rust-browser-control` MCP tools only for operations the user requested.
 - Treat purchases, publishing, account/security changes, and destructive actions as confirmation-sensitive.
 - Never enter or expose passwords, one-time codes, payment data, or unrelated personal data unless the user explicitly supplies and authorizes that exact action.
 - Keep downloads in the configured download directory and report the verified absolute file path.
+- Raw CDP is a developer-mode escape hatch, not a way around navigation, download, authentication, or confirmation policy.
 
 ## Sign-in
 
