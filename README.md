@@ -8,9 +8,9 @@ This repository combines two pieces:
 1. `rust-browser-control`, a portable Codex plugin that connects to the
    current task's visible Browser side pane and uses the same cursor and login
    state as the user.
-2. The tested Arch Linux ARM64 desktop packaging used on a small ARM device, built
-   from OpenAI's official ARM64 app archive with native modules rebuilt for
-   Electron on Linux.
+2. The tested Arch Linux ARM64 desktop packaging used on a small ARM device,
+   built from OpenAI's official ARM64 app archive with native modules rebuilt
+   for Electron on Linux.
 
 ## Tested platforms
 
@@ -22,14 +22,7 @@ This repository combines two pieces:
 
 ## Install the browser plugin
 
-From GitHub:
-
-```bash
-codex plugin marketplace add ASoldo/codex-desktop-linux
-codex plugin add rust-browser-control@codex-desktop-linux
-```
-
-Or clone the repository and install the local checkout:
+Clone once and run the synchronizer:
 
 ```bash
 git clone https://github.com/ASoldo/codex-desktop-linux.git
@@ -37,9 +30,39 @@ cd codex-desktop-linux
 ./install-plugin.sh
 ```
 
+The installer configures `ASoldo/codex-desktop-linux` as a Git marketplace,
+prebuilds the native Rust binary, and installs stable update and diagnostic
+commands. Use the same update command on every Linux device:
+
+```bash
+codex-browser-control-update
+codex-browser-control-doctor
+```
+
+The synchronizer removes an enabled legacy `rust-browser-control@personal`
+copy only after the GitHub-backed copy installs and builds successfully. It
+preserves the old source directory as a rollback and avoids duplicate MCP tool
+registrations.
+
+See [Linux device parity](docs/device-parity.md) for the cross-architecture
+compatibility contract, verified baseline, update order, and post-update smoke
+test.
+
 Start a new Codex thread after installation. Plugin skills and MCP tools are
 resolved when the thread starts; an already-running thread will not gain them
 retroactively.
+
+## Side-pane only
+
+Rust Browser Control accepts only Codex in-app-browser (`iab`) sockets that
+match the current task. It does not need or use a Chrome/Chromium extension,
+the Codex Chrome plugin, WebDriver, a separate Playwright browser, or a second
+browser profile. Extension sockets can coexist on a machine but are ignored.
+
+This keeps the user and Codex in the same visible tab and authenticated session.
+The exact Electron runtime may differ between Linux architectures; compatibility
+is determined by the Codex in-app-browser protocol and app build, not by Chrome
+extension state.
 
 ## Shared login and control flow
 
@@ -100,8 +123,7 @@ Install the AUR package and then install this repository's plugin:
 
 ```bash
 yay -S openai-codex-desktop
-codex plugin marketplace add ASoldo/codex-desktop-linux
-codex plugin add rust-browser-control@codex-desktop-linux
+./install-plugin.sh
 ```
 
 The custom ARM64 repackaging is not needed on `x86_64`.
@@ -122,6 +144,9 @@ python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
 plugins/rust-browser-control/          Portable Rust MCP plugin
 desktop/archlinux-arm64/               ARM64 package, updater, and Linux patches
 install-plugin.sh                      Local-checkout plugin installer
+scripts/codex-browser-control-sync     Cross-device Git marketplace updater
+scripts/codex-browser-control-doctor   Version and source-parity diagnostic
+docs/device-parity.md                  Cross-device compatibility contract
 ```
 
 ## License

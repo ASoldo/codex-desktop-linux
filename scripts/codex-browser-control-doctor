@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+marketplace_name="codex-desktop-linux"
+plugin_name="rust-browser-control"
+plugin_spec="${plugin_name}@${marketplace_name}"
+
+for command_name in codex jq sha256sum find sort xargs; do
+  command -v "${command_name}" >/dev/null 2>&1 || {
+    printf 'Missing required command: %s\n' "${command_name}" >&2
+    exit 1
+  }
+done
+
+marketplaces_json="$(codex plugin marketplace list --json)"
+marketplace_record="$(
+  jq -r --arg name "${marketplace_name}" '
+    .marketplaces[]
+    | select(.name == $name)
+    | [
+        .root,
+        (.marketplaceSource.sourceType // "implicit"),
+        (.marketplaceSource.source // "")
+      ]
+    | @tsv
+  ' <<<"${marketplaces_json}"
+)"
+
+printf 'node: %s (%s)\n' "$(uname -n)" "$(uname -m)"
+printf 'codex: %s\n' "$(codex --version)"
+printf 'transport: Codex in-app Browser side pane only\n'
+printf 'chrome-extension: not used\n'
+
+if [[ -z "${marketplace_record}" ]]; then
+  printf 'marketplace: missing (%s)\n' "${marketplace_name}"
+  exit 1
+fi
+
+IFS=$'\t' read -r marketplace_root source_type configured_source <<<"${marketplace_record}"
+plugin_root="${marketplace_root}/plugins/${plugin_name}"
+
+printf 'marketplace: %s (%s, %s)\n' \
+  "${marketplace_name}" "${source_type}" "${configured_source:-${marketplace_root}}"
+printf 'plugin: %s\n' "$(jq -r '.version' "${plugin_root}/.codex-plugin/plugin.json")"
+printf 'installation: '
+codex plugin list | awk -v spec="${plugin_spec}" '$1 == spec {print $2 " " $3; found=1} END {if (!found) print "not installed"}'
+
+plugin_digest="$(
+  cd -- "${plugin_root}"
+  find . -type f ! -path './target/*' -print0 \
+    | sort -z \
+    | xargs -0 sha256sum \
+    | sha256sum \
+    | cut -d ' ' -f 1
+)"
+printf 'plugin-source-digest: %s\n' "${plugin_digest}"
+
+app_process="$(pgrep -af 'chrome_crashpad_handler.*_productName=Codex' | head -n 1 || true)"
+if [[ "${app_process}" =~ _version=([^[:space:]]+) ]]; then
+  printf 'codex-desktop: %s\n' "${BASH_REMATCH[1]}"
+else
+  printf 'codex-desktop: not running or version unavailable\n'
+fi
+
+if [[ "${app_process}" =~ --annotation=ver=([^[:space:]]+) ]]; then
+  printf 'electron: %s\n' "${BASH_REMATCH[1]}"
+fi
+
+socket_count="$(find /tmp/codex-browser-use -maxdepth 1 -type s -name '*.sock' 2>/dev/null | wc -l)"
+printf 'browser-sockets: %s (session matching is checked at tool call time)\n' "${socket_count}"

@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+marketplace_name="codex-desktop-linux"
+marketplace_source="ASoldo/codex-desktop-linux"
+plugin_name="rust-browser-control"
+plugin_spec="${plugin_name}@${marketplace_name}"
+personal_spec="${plugin_name}@personal"
+keep_personal=0
+
+usage() {
+  cat <<'EOF'
+Usage: codex-browser-control-sync [--keep-personal]
+
+Install or update Rust Browser Control from the GitHub marketplace, build the
+native binary for this machine, and install stable update/doctor commands.
+
+By default an older Personal installation is disabled only after the GitHub
+plugin builds successfully. Its source directory is preserved as a rollback.
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --keep-personal)
+      keep_personal=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'Unknown option: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+for command_name in codex cargo git jq sha256sum flock install find sort xargs; do
+  command -v "${command_name}" >/dev/null 2>&1 || {
+    printf 'Missing required command: %s\n' "${command_name}" >&2
+    exit 1
+  }
+done
+
+marketplaces_json="$(codex plugin marketplace list --json)"
+marketplace_record="$(
+  jq -r --arg name "${marketplace_name}" '
+    .marketplaces[]
+    | select(.name == $name)
+    | [
+        .root,
+        (.marketplaceSource.sourceType // "implicit"),
+        (.marketplaceSource.source // "")
+      ]
+    | @tsv
+  ' <<<"${marketplaces_json}"
+)"
+
+if [[ -n "${marketplace_record}" ]]; then
+  IFS=$'\t' read -r marketplace_root source_type configured_source <<<"${marketplace_record}"
+  if [[ "${source_type}" != "git" ]]; then
+    printf 'Migrating %s marketplace from %s source %s to GitHub...\n' \
+      "${marketplace_name}" "${source_type}" "${configured_source:-${marketplace_root}}"
+    codex plugin remove "${plugin_spec}" --json >/dev/null 2>&1 || true
+    codex plugin marketplace remove "${marketplace_name}" --json >/dev/null
+    marketplace_record=""
+  fi
+fi
+
+if [[ -z "${marketplace_record}" ]]; then
+  codex plugin marketplace add "${marketplace_source}" --ref main --json
+else
+  codex plugin marketplace upgrade "${marketplace_name}" --json
+fi
+
+codex plugin remove "${plugin_spec}" --json >/dev/null 2>&1 || true
+codex plugin add "${plugin_spec}" --json
+
+marketplaces_json="$(codex plugin marketplace list --json)"
+marketplace_root="$(
+  jq -r --arg name "${marketplace_name}" \
+    '.marketplaces[] | select(.name == $name) | .root' \
+    <<<"${marketplaces_json}"
+)"
+plugin_root="${marketplace_root}/plugins/${plugin_name}"
+
+[[ -x "${plugin_root}/scripts/build-release" ]] || {
+  printf 'Installed plugin source is incomplete at %s\n' "${plugin_root}" >&2
+  exit 1
+}
+
+"${plugin_root}/scripts/build-release"
+
+install -Dm755 \
+  "${marketplace_root}/scripts/codex-browser-control-sync" \
+  "${HOME}/.local/bin/codex-browser-control-update"
+install -Dm755 \
+  "${marketplace_root}/scripts/codex-browser-control-doctor" \
+  "${HOME}/.local/bin/codex-browser-control-doctor"
+
+if ((keep_personal == 0)); then
+  codex plugin remove "${personal_spec}" --json >/dev/null 2>&1 || true
+fi
+
+plugin_version="$(jq -r '.version' "${plugin_root}/.codex-plugin/plugin.json")"
+plugin_digest="$(
+  cd -- "${plugin_root}"
+  find . -type f ! -path './target/*' -print0 \
+    | sort -z \
+    | xargs -0 sha256sum \
+    | sha256sum \
+    | cut -d ' ' -f 1
+)"
+
+printf '\nRust Browser Control %s is installed from %s.\n' \
+  "${plugin_version}" "${marketplace_source}"
+printf 'Plugin source digest: %s\n' "${plugin_digest}"
+printf 'Chrome/Chromium extensions are not used; control stays in the Codex side pane.\n'
+printf 'Start a new Codex Desktop thread to load the updated tools.\n'

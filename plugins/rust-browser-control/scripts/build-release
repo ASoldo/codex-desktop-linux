@@ -3,6 +3,50 @@ set -euo pipefail
 
 PLUGIN_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TASK_CACHE_ROOT="${XDG_CACHE_HOME:-${HOME}/.cache}/rust-browser-control"
+SOURCE_STAMP="${TASK_CACHE_ROOT}/source.sha256"
+BUILD_LOCK="${TASK_CACHE_ROOT}/build.lock"
+BINARY="${TASK_CACHE_ROOT}/target/release/rust-browser-control-mcp"
+
+source_digest() {
+  sha256sum \
+    "${PLUGIN_ROOT}/Cargo.toml" \
+    "${PLUGIN_ROOT}/Cargo.lock" \
+    "${PLUGIN_ROOT}/src/main.rs" \
+    "${PLUGIN_ROOT}/src/browser.rs" \
+    | sha256sum \
+    | cut -d ' ' -f 1
+}
+
+write_source_stamp() {
+  local digest="$1"
+  local stamp_tmp="${SOURCE_STAMP}.tmp.$$"
+  printf '%s\n' "${digest}" > "${stamp_tmp}"
+  mv -f -- "${stamp_tmp}" "${SOURCE_STAMP}"
+}
+
 mkdir -p "${TASK_CACHE_ROOT}"
-CARGO_TARGET_DIR="${TASK_CACHE_ROOT}/target" cargo build --release --locked --manifest-path "${PLUGIN_ROOT}/Cargo.toml"
+current_digest="$(source_digest)"
+cached_digest="$(cat "${SOURCE_STAMP}" 2>/dev/null || true)"
+
+if [[ -x "${BINARY}" && -z "${cached_digest}" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/Cargo.toml" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/Cargo.lock" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/src/main.rs" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/src/browser.rs" ]]; then
+  write_source_stamp "${current_digest}"
+  cached_digest="${current_digest}"
+fi
+
+if [[ ! -x "${BINARY}" || "${current_digest}" != "${cached_digest}" ]]; then
+  exec 9>"${BUILD_LOCK}"
+  flock 9
+  current_digest="$(source_digest)"
+  cached_digest="$(cat "${SOURCE_STAMP}" 2>/dev/null || true)"
+  if [[ ! -x "${BINARY}" || "${current_digest}" != "${cached_digest}" ]]; then
+    CARGO_TARGET_DIR="${TASK_CACHE_ROOT}/target" cargo build --release --locked --manifest-path "${PLUGIN_ROOT}/Cargo.toml"
+    write_source_stamp "${current_digest}"
+  fi
+  flock -u 9
+fi
+
 echo "${TASK_CACHE_ROOT}/target/release/rust-browser-control-mcp"

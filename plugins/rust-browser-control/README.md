@@ -10,6 +10,11 @@ does not launch a separate Chrome profile, copy cookies, or collect credentials.
 If a site needs sign-in, the user signs in directly in the side pane and Codex
 continues afterward.
 
+This is deliberately side-pane-only. It does not use the Codex Chrome plugin,
+a Chrome/Chromium extension, WebDriver, or a separate Playwright browser.
+Extension-owned sockets are ignored because the server accepts only Codex
+in-app-browser (`iab`) routes matching the current task ID.
+
 ## Capabilities
 
 - Attach to the current task's in-app Browser side pane.
@@ -56,7 +61,25 @@ cargo test --locked
 
 Generated binaries live under the XDG cache directory rather than in the
 plugin source tree. On first use, the MCP launcher builds the release binary
-for the current Linux architecture.
+for the current Linux architecture. A source digest and file lock prevent
+copied timestamps or concurrent tool calls from triggering duplicate builds.
+
+## Install and update across devices
+
+Run the repository installer once. It configures the GitHub marketplace,
+builds for the current architecture, removes an older enabled Personal copy,
+and installs two stable commands:
+
+```bash
+./install-plugin.sh
+codex-browser-control-update
+codex-browser-control-doctor
+```
+
+The updater refreshes the Git marketplace from `main`, reinstalls the plugin,
+and prebuilds it before a new Codex thread can call it. The doctor prints the
+plugin version and a platform-independent digest of the full plugin tree;
+matching digests mean the ARM64 and x86_64 devices are running the same plugin.
 
 ## Safe sign-in flow
 

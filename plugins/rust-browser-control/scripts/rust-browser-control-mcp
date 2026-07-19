@@ -4,10 +4,55 @@ set -euo pipefail
 PLUGIN_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TASK_CACHE_ROOT="${XDG_CACHE_HOME:-${HOME}/.cache}/rust-browser-control"
 BINARY="${TASK_CACHE_ROOT}/target/release/rust-browser-control-mcp"
+SOURCE_STAMP="${TASK_CACHE_ROOT}/source.sha256"
+BUILD_LOCK="${TASK_CACHE_ROOT}/build.lock"
 
-if [[ ! -x "${BINARY}" || "${PLUGIN_ROOT}/Cargo.toml" -nt "${BINARY}" || "${PLUGIN_ROOT}/src/main.rs" -nt "${BINARY}" || "${PLUGIN_ROOT}/src/browser.rs" -nt "${BINARY}" ]]; then
-  mkdir -p "${TASK_CACHE_ROOT}"
-  CARGO_TARGET_DIR="${TASK_CACHE_ROOT}/target" cargo build --quiet --release --locked --manifest-path "${PLUGIN_ROOT}/Cargo.toml"
+source_digest() {
+  sha256sum \
+    "${PLUGIN_ROOT}/Cargo.toml" \
+    "${PLUGIN_ROOT}/Cargo.lock" \
+    "${PLUGIN_ROOT}/src/main.rs" \
+    "${PLUGIN_ROOT}/src/browser.rs" \
+    | sha256sum \
+    | cut -d ' ' -f 1
+}
+
+write_source_stamp() {
+  local digest="$1"
+  local stamp_tmp="${SOURCE_STAMP}.tmp.$$"
+  printf '%s\n' "${digest}" > "${stamp_tmp}"
+  mv -f -- "${stamp_tmp}" "${SOURCE_STAMP}"
+}
+
+mkdir -p "${TASK_CACHE_ROOT}"
+current_digest="$(source_digest)"
+cached_digest="$(cat "${SOURCE_STAMP}" 2>/dev/null || true)"
+
+if [[ -x "${BINARY}" && -z "${cached_digest}" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/Cargo.toml" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/Cargo.lock" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/src/main.rs" \
+  && "${BINARY}" -nt "${PLUGIN_ROOT}/src/browser.rs" ]]; then
+  write_source_stamp "${current_digest}"
+  cached_digest="${current_digest}"
+fi
+
+if [[ ! -x "${BINARY}" || "${current_digest}" != "${cached_digest}" ]]; then
+  exec 9>"${BUILD_LOCK}"
+  flock 9
+  current_digest="$(source_digest)"
+  cached_digest="$(cat "${SOURCE_STAMP}" 2>/dev/null || true)"
+  if [[ ! -x "${BINARY}" || "${current_digest}" != "${cached_digest}" ]]; then
+    printf 'Building Rust Browser Control for %s...\n' "$(uname -m)" >&2
+    CARGO_TARGET_DIR="${TASK_CACHE_ROOT}/target" cargo build --quiet --release --locked --manifest-path "${PLUGIN_ROOT}/Cargo.toml"
+    write_source_stamp "${current_digest}"
+  fi
+  flock -u 9
+fi
+
+if [[ ! -x "${BINARY}" ]]; then
+  printf 'Rust Browser Control binary was not produced at %s\n' "${BINARY}" >&2
+  exit 1
 fi
 
 exec "${BINARY}"

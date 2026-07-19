@@ -1,6 +1,6 @@
 {
   "name": "rust-browser-control",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Control the visible Codex in-app browser on Linux through a local Rust MCP server.",
   "author": {
     "name": "ASoldo",

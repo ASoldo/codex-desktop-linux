@@ -17,3 +17,6 @@ jobs:
           components: rustfmt
       - run: cargo fmt --check
       - run: cargo test --locked
+      - name: Check shell scripts
+        working-directory: .
+        run: bash -n install-plugin.sh scripts/* plugins/rust-browser-control/scripts/*
