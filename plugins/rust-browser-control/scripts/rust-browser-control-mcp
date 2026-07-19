@@ -8,13 +8,10 @@ SOURCE_STAMP="${TASK_CACHE_ROOT}/source.sha256"
 BUILD_LOCK="${TASK_CACHE_ROOT}/build.lock"
 
 source_digest() {
-  sha256sum \
-    "${PLUGIN_ROOT}/Cargo.toml" \
-    "${PLUGIN_ROOT}/Cargo.lock" \
-    "${PLUGIN_ROOT}/src/main.rs" \
-    "${PLUGIN_ROOT}/src/browser.rs" \
-    | sha256sum \
-    | cut -d ' ' -f 1
+  (
+    cd -- "${PLUGIN_ROOT}"
+    sha256sum Cargo.toml Cargo.lock src/main.rs src/browser.rs
+  ) | sha256sum | cut -d ' ' -f 1
 }
 
 write_source_stamp() {
