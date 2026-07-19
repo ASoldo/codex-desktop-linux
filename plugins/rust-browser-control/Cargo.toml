@@ -1,6 +1,6 @@
 [package]
 name = "rust-browser-control-mcp"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2024"
 description = "A local MCP server for controlling the visible Codex in-app browser"
 license = "MIT"

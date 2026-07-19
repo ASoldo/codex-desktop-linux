@@ -18,12 +18,24 @@ in-app-browser (`iab`) routes matching the current task ID.
 ## Capabilities
 
 - Attach to the current task's in-app Browser side pane.
-- List, claim, create, and navigate tabs.
-- Read compact page snapshots with reusable CSS selectors.
-- Move the visible Codex cursor, click, scroll, type, select options, and set
-  checkbox or radio state.
-- Capture screenshots and verify completed downloads on disk.
+- Name the session; list, create, navigate, reload, and close tabs.
+- Read compact snapshots; inspect locator counts, text, attributes, state, and
+  geometry; run side-effect-blocked page reads.
+- Move the visible Codex cursor, click, double-click, drag, scroll, type, press
+  key combinations, select options, and set checkbox or radio state.
+- Wait on elements, URLs, and load state; handle JavaScript dialogs and the
+  side-pane clipboard.
+- Capture viewport, full-page, and element screenshots; upload explicit local
+  files; verify completed downloads on disk.
+- Capture page console errors, export HTML/text/Markdown/PDF, and inventory or
+  bundle rendered page assets.
+- Show/hide the browser and set/reset responsive viewport overrides.
+- Offer raw CDP commands and events only behind an explicit developer flag.
 - Restrict tool-requested navigation to a configurable host allowlist.
+
+See [the audited feature-parity matrix](../../docs/browser-feature-parity.md)
+for the mapping to Codex Desktop's bundled Browser API and the deliberate
+platform-owned boundaries.
 
 ## Requirements
 
@@ -44,6 +56,7 @@ The MCP launcher passes these optional environment variables through:
 | `RUST_BROWSER_SESSIONS_ROOT` | `$HOME/.codex/sessions` | Rollout metadata used to resolve the current turn. |
 | `RUST_BROWSER_SESSION_ID` | `CODEX_THREAD_ID` | Explicit task/session override. |
 | `RUST_BROWSER_TURN_ID` | `CODEX_TURN_ID` or latest rollout turn | Explicit turn override. |
+| `RUST_BROWSER_ENABLE_RAW_CDP` | unset/false | Enable guarded developer-mode `cdp_command` and `cdp_events` tools. |
 
 Use a narrow allowlist on machines where Codex should only control selected
 sites, for example:
@@ -88,6 +101,8 @@ matching digests mean the ARM64 and x86_64 devices are running the same plugin.
 3. If the site is signed out, complete the login yourself in the shared pane.
 4. Tell Codex to continue. Passwords and one-time codes should stay under user
    control.
+
+No Chrome extension or password-manager bridge is needed for this flow.
 
 ## License
 

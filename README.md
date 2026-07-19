@@ -46,7 +46,9 @@ registrations.
 
 See [Linux device parity](docs/device-parity.md) for the cross-architecture
 compatibility contract, verified baseline, update order, and post-update smoke
-test.
+test. See [Browser feature parity](docs/browser-feature-parity.md) for the
+audited mapping from the bundled Codex Browser API to Rust tools and the small
+set of app-owned boundaries that must not be emulated by copying credentials.
 
 Start a new Codex thread after installation. Plugin skills and MCP tools are
 resolved when the thread starts; an already-running thread will not gain them
@@ -63,6 +65,11 @@ This keeps the user and Codex in the same visible tab and authenticated session.
 The exact Electron runtime may differ between Linux architectures; compatibility
 is determined by the Codex in-app-browser protocol and app build, not by Chrome
 extension state.
+
+Version `0.3.0` covers the practical side-pane feature set: tab lifecycle,
+visible pointer and keyboard input, locator inspection, waits, screenshots,
+clipboard, dialogs, uploads, verified downloads, console capture, page exports,
+rendered assets, viewport/visibility capabilities, and opt-in developer CDP.
 
 ## Shared login and control flow
 

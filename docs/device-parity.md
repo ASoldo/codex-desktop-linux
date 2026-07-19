@@ -35,13 +35,15 @@ does not copy cookies or credentials between machines.
 | Codex CLI | `0.144.6` | `0.144.6` |
 | Electron | `42.6.1` system package | `42.2.0` bundled runtime |
 | Plugin before migration | Personal `0.1.0` | Personal `0.2.0` |
-| Plugin after migration | Git marketplace `0.2.1` | Git marketplace `0.2.1` |
+| Plugin after feature-parity update | Git marketplace `0.3.0` | Git marketplace `0.3.0` |
 | Browser transport | Codex side-pane `iab` socket | Codex side-pane `iab` socket |
 
 The original `0.1.0` plugin defaulted to Mixamo and a small Adobe host
-allowlist. Version `0.2.1` is site-neutral, attaches without unsolicited
-navigation, masks password-field values in snapshots, validates download
-source URLs, and defaults to all HTTP(S) hosts unless an allowlist is set.
+allowlist. Version `0.2.1` made the controller site-neutral and safer. Version
+`0.3.0` aligns it with the practical bundled side-pane Browser feature set,
+including tab lifecycle, complete pointer/keyboard gestures, bounded locator
+inspection, waits, screenshots, clipboard, dialogs, uploads/downloads, logs,
+exports, page assets, viewport/visibility capabilities, and opt-in raw CDP.
 
 ## Update and switch workflow
 
